@@ -46,6 +46,13 @@ export default function TimeSlotPicker({
     return timeMinutes < currentMinutes;
   };
 
+  const isDisabledEndTime = (time: string): boolean => {
+    const convertedStartTime = Number(startTime.replace(':','').slice(0,3))
+    const convertedEndTime = Number(time.replace(':','').slice(0,3))
+  
+    return !!(convertedStartTime && convertedStartTime >= convertedEndTime)
+  };
+
   // 시작 시간 변경 핸들러 (종료 시간 자동 설정 포함)
   const handleStartTimeChange = (time: string) => {
     onStartTimeChange(time);
@@ -188,7 +195,7 @@ export default function TimeSlotPicker({
             >
               <option value="">선택</option>
               {endTimeSlots.map((time) => (
-                <option key={time} value={time}>
+                <option key={time} value={time} disabled={isDisabledEndTime(time)}>
                   {time}
                 </option>
               ))}
