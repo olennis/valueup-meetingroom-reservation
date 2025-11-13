@@ -58,7 +58,25 @@ const Home = () => {
         }
 
         if (reservationsData) {
-          setReservations(reservationsData.map((res: ReservationDB) => dbToReservation(res)));
+          // 현재 시간 이후의 예약만 필터링
+          const now = new Date();
+          const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+          const futureReservations = reservationsData.filter((res: ReservationDB) => {
+            // 날짜가 오늘보다 이후인 경우
+            if (res.date > today) return true;
+
+            // 날짜가 오늘보다 이전인 경우
+            if (res.date < today) return false;
+
+            // 오늘 날짜인 경우 종료 시간이 현재 시간보다 이후인지 확인
+            const [endHour, endMinute] = res.end_time.split(':').map(Number);
+            const endTimeInMinutes = endHour * 60 + endMinute;
+            return endTimeInMinutes > currentTimeInMinutes;
+          });
+
+          setReservations(futureReservations.map((res: ReservationDB) => dbToReservation(res)));
         }
       } catch (error) {
         console.error('데이터 로드 실패:', error);
