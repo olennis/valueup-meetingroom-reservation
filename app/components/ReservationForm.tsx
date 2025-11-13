@@ -13,10 +13,19 @@ interface ReservationFormProps {
 }
 
 export default function ReservationForm({ room, reservations, onSubmit, onCancel }: ReservationFormProps) {
+  // 오늘 날짜를 YYYY-MM-DD 형식으로 가져오기
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
     userName: '',
     userEmail: '',
-    date: '',
+    date: getTodayDate(),
     startTime: '',
     endTime: '',
     purpose: '',
