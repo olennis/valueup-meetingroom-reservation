@@ -12,6 +12,7 @@ interface ReservationListProps {
 export default function ReservationList({ reservations, onCancel, initialViewMode = 'timeline' }: ReservationListProps) {
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>(initialViewMode);
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
 
   if (reservations.length === 0) {
     return (
@@ -51,11 +52,11 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
     return hours * 60 + minutes;
   };
 
-  // 시간대를 시각화하기 위한 함수 (9시~18시 기준)
+  // 시간대를 시각화하기 위한 함수 (8:30~19:00 기준)
   const getTimelinePosition = (time: string) => {
     const minutes = timeToMinutes(time);
-    const startMinutes = 9 * 60; // 9:00
-    const endMinutes = 18 * 60; // 18:00
+    const startMinutes = 8 * 60 + 30; // 8:30
+    const endMinutes = 19 * 60; // 19:00
     const totalMinutes = endMinutes - startMinutes;
 
     const relativeMinutes = minutes - startMinutes;
@@ -66,7 +67,7 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
     const start = timeToMinutes(startTime);
     const end = timeToMinutes(endTime);
     const duration = end - start;
-    const totalMinutes = 9 * 60; // 9시간 (9:00~18:00)
+    const totalMinutes = 10 * 60 + 30; // 10.5시간 (8:30~19:00)
 
     return (duration / totalMinutes) * 100;
   };
@@ -77,11 +78,11 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTimeInMinutes = currentHour * 60 + currentMinute;
-    const startMinutes = 9 * 60; // 9:00
-    const endMinutes = 18 * 60; // 18:00
+    const startMinutes = 8 * 60 + 30; // 8:30
+    const endMinutes = 19 * 60; // 19:00
     const totalMinutes = endMinutes - startMinutes;
 
-    // 9시 이전이거나 18시 이후면 null 반환
+    // 8:30 이전이거나 19:00 이후면 null 반환
     if (currentTimeInMinutes < startMinutes || currentTimeInMinutes > endMinutes) {
       return null;
     }
@@ -103,6 +104,47 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
   // 타임라인용: 오늘 날짜의 예약만 필터링하고 회의실별로 그룹화
   const todayReservations = reservations.filter(r => r.date === todayString);
 
+  // 예약이 종료되었는지 확인하는 함수
+  const isReservationPast = (reservation: Reservation): boolean => {
+    const now = new Date();
+    const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+    const [endHour, endMinute] = reservation.endTime.split(':').map(Number);
+    const endTimeInMinutes = endHour * 60 + endMinute;
+
+    return reservation.date === todayString && endTimeInMinutes <= currentTimeInMinutes;
+  };
+
+  // 연속된 예약을 병합하는 함수
+  const mergeConsecutiveReservations = (reservations: Reservation[]): Reservation[] => {
+    if (reservations.length === 0) return [];
+
+    const sorted = [...reservations].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const merged: Reservation[] = [];
+
+    let current = { ...sorted[0] };
+
+    for (let i = 1; i < sorted.length; i++) {
+      const next = sorted[i];
+
+      // 현재 예약의 종료 시간과 다음 예약의 시작 시간이 같으면 병합
+      if (current.endTime === next.startTime) {
+        current.endTime = next.endTime;
+        // ID를 배열로 저장 (취소 시 모든 예약 취소를 위해)
+        if (!current.id.includes(',')) {
+          current.id = current.id + ',' + next.id;
+        } else {
+          current.id = current.id + ',' + next.id;
+        }
+      } else {
+        merged.push(current);
+        current = { ...next };
+      }
+    }
+    merged.push(current);
+
+    return merged;
+  };
+
   // 예약자별로 그룹화하는 함수
   const groupByUser = (reservations: Reservation[]) => {
     if (reservations.length === 0) return [];
@@ -120,7 +162,7 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
 
     return Array.from(grouped.entries()).map(([userName, userReservations]) => ({
       userName,
-      reservations: userReservations
+      reservations: mergeConsecutiveReservations(userReservations)
     }));
   };
 
@@ -217,10 +259,10 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
                   {/* 시간 눈금 */}
                   <div className="relative mb-2">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>09:00</span>
+                      <span>08:30</span>
                       <span>12:00</span>
-                      <span>15:00</span>
-                      <span>18:00</span>
+                      <span>15:30</span>
+                      <span>19:00</span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full relative">
                       {/* 시간 구분선 */}
@@ -229,7 +271,7 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
                     </div>
                   </div>
 
-                  {/* 예약 목록 - 예약자별로 그룹화 */}
+                  {/* 예약 목록 */}
                   <div className="space-y-3 mt-4 relative">
                     {/* 현재 시간 라인 */}
                     {currentTimePosition !== null && (
@@ -244,44 +286,119 @@ export default function ReservationList({ reservations, onCancel, initialViewMod
                       </div>
                     )}
 
-                    {userGroups.map(({ userName, reservations: userReservations }) => (
-                      <div key={userName} className="relative">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-gray-500">{userName}</span>
-                        </div>
+                    {/* 모바일: 모든 예약을 하나의 타임라인에 표시 */}
+                    <div className="lg:hidden">
+                      <div className="relative h-12 bg-gray-100 rounded-lg mb-4">
+                        {(() => {
+                          // 회의실별 예약을 사용자별로 그룹화하고 병합
+                          const roomReservations = todayReservations.filter(r => r.roomName === roomName);
+                          const userGroups = groupByUser(roomReservations);
+                          const allMergedReservations = userGroups.flatMap(group => group.reservations);
 
-                        {/* 타임라인 바 - 같은 예약자의 모든 예약을 한 줄에 표시 */}
-                        <div className="relative h-8 bg-gray-100 rounded-lg mb-6">
-                          {userReservations.map((reservation: Reservation) => {
+                          return allMergedReservations.map((reservation: Reservation) => {
                             const width = getTimelineWidth(reservation.startTime, reservation.endTime);
-                            // 30분 예약의 경우 최소 너비 보장
-                            const minWidth = Math.max(width, 8); // 최소 8%
+                            const minWidth = Math.max(width, 8);
+                            const isPast = isReservationPast(reservation);
+                            const isSelected = selectedReservationId === reservation.id;
 
                             return (
                               <div
                                 key={reservation.id}
-                                className="absolute h-full"
+                                className="absolute"
                                 style={{
                                   left: `${getTimelinePosition(reservation.startTime)}%`,
-                                  width: `${minWidth}%`
+                                  width: `${minWidth}%`,
+                                  top: '14px',
+                                  height: 'calc(100% - 14px)'
                                 }}
                               >
-                                <div className="h-full bg-[#4F00F8] rounded-lg flex items-center justify-between px-3 text-white text-xs font-medium">
-                                  <span>{formatTime(reservation.startTime)}</span>
-                                  <span>{formatTime(reservation.endTime)}</span>
+                                {/* 예약자 이름 (바 바로 위) */}
+                                <div className="absolute -top-4 left-0 text-[10px] text-gray-600 font-medium truncate max-w-full">
+                                  {reservation.userName}
                                 </div>
+
+                                {/* 타임라인 바 */}
+                                <div
+                                  onClick={() => setSelectedReservationId(isSelected ? null : reservation.id)}
+                                  className={`h-full rounded-lg cursor-pointer ${
+                                    isPast ? 'bg-gray-400' : 'bg-[#4F00F8]'
+                                  }`}
+                                >
+                                  {/* 시간 툴팁 */}
+                                  {isSelected && (
+                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-20">
+                                      {formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}
+                                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 취소 버튼 */}
                                 <button
-                                  onClick={() => onCancel(reservation.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const ids = reservation.id.split(',');
+                                    ids.forEach(id => onCancel(id));
+                                  }}
                                   className="absolute left-1/2 -translate-x-1/2 top-full mt-1 text-xs text-red-600 hover:text-red-700 whitespace-nowrap"
                                 >
                                   취소
                                 </button>
                               </div>
                             );
-                          })}
-                        </div>
+                          });
+                        })()}
                       </div>
-                    ))}
+                    </div>
+
+                    {/* PC: 예약자별로 그룹화하여 표시 */}
+                    <div className="hidden lg:block space-y-3">
+                      {userGroups.map(({ userName, reservations: userReservations }) => (
+                        <div key={userName} className="relative">
+                          {/* 예약자 이름 */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-gray-500">{userName}</span>
+                          </div>
+
+                          {/* 타임라인 바 */}
+                          <div className="relative h-8 bg-gray-100 rounded-lg mb-6">
+                            {userReservations.map((reservation: Reservation) => {
+                              const width = getTimelineWidth(reservation.startTime, reservation.endTime);
+                              const minWidth = Math.max(width, 8);
+                              const isPast = isReservationPast(reservation);
+
+                              return (
+                                <div
+                                  key={reservation.id}
+                                  className="absolute h-full"
+                                  style={{
+                                    left: `${getTimelinePosition(reservation.startTime)}%`,
+                                    width: `${minWidth}%`
+                                  }}
+                                >
+                                  <div className={`h-full rounded-lg flex items-center justify-between px-3 text-white text-xs font-medium ${
+                                    isPast ? 'bg-gray-400' : 'bg-[#4F00F8]'
+                                  }`}>
+                                    <span>{formatTime(reservation.startTime)}</span>
+                                    <span>{formatTime(reservation.endTime)}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      // 병합된 예약의 경우 모든 ID를 분리하여 각각 취소
+                                      const ids = reservation.id.split(',');
+                                      ids.forEach(id => onCancel(id));
+                                    }}
+                                    className="absolute left-1/2 -translate-x-1/2 top-full mt-1 text-xs text-red-600 hover:text-red-700 whitespace-nowrap"
+                                  >
+                                    취소
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))

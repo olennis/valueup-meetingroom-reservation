@@ -14,8 +14,8 @@ const Home = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [activeTab, setActiveTab] = useState<'rooms' | 'reservations'>('rooms');
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline');
+  const [mobileTab, setMobileTab] = useState<'rooms' | 'reservations'>('rooms');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
     message: '',
     type: 'success',
@@ -137,7 +137,6 @@ const Home = () => {
       }
 
       setSelectedRoom(null);
-      setActiveTab('reservations');
       setToast({ message: '예약이 완료되었습니다.', type: 'success', isVisible: true });
     } catch (error) {
       console.error('예약 실패:', error);
@@ -168,9 +167,6 @@ const Home = () => {
       // 로컬 상태 업데이트
       setReservations(reservations.filter((r) => r.id !== id));
       setToast({ message: '예약이 취소되었습니다.', type: 'success', isVisible: true });
-
-      // 회의실 목록 탭으로 이동
-      setActiveTab('rooms');
     } catch (error) {
       console.error('예약 취소 실패:', error);
       setToast({ message: '예약 취소에 실패했습니다. 다시 시도해주세요.', type: 'error', isVisible: true });
@@ -224,13 +220,14 @@ const Home = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
+        {/* 모바일 탭 (lg 미만에서만 표시) */}
+        <div className="lg:hidden mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8">
               <button
-                onClick={() => setActiveTab('rooms')}
+                onClick={() => setMobileTab('rooms')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'rooms'
+                  mobileTab === 'rooms'
                     ? 'border-[#4F00F8] text-[#4F00F8]'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
@@ -238,9 +235,9 @@ const Home = () => {
                 회의실 목록
               </button>
               <button
-                onClick={() => setActiveTab('reservations')}
+                onClick={() => setMobileTab('reservations')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'reservations'
+                  mobileTab === 'reservations'
                     ? 'border-[#4F00F8] text-[#4F00F8]'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
@@ -251,26 +248,67 @@ const Home = () => {
           </div>
         </div>
 
-        {activeTab === 'rooms' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rooms.map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                onReserve={handleReserve}
-                inUse={isRoomInUse(room.id)}
-              />
-            ))}
-          </div>
-        )}
+        {/* 모바일: 탭에 따라 하나만 표시 */}
+        <div className="lg:hidden">
+          {mobileTab === 'rooms' && (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-900">회의실 목록</h2>
+              <div className="grid grid-cols-1 gap-6">
+                {rooms.map((room) => (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    onReserve={handleReserve}
+                    inUse={isRoomInUse(room.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
-        {activeTab === 'reservations' && (
-          <ReservationList
-            reservations={reservations}
-            onCancel={handleCancelReservation}
-            initialViewMode={viewMode}
-          />
-        )}
+          {mobileTab === 'reservations' && (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-900">
+                예약 내역 ({reservations.length})
+              </h2>
+              <ReservationList
+                reservations={reservations}
+                onCancel={handleCancelReservation}
+                initialViewMode={viewMode}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 데스크톱: 상하 레이아웃으로 모두 표시 */}
+        <div className="hidden lg:block space-y-8">
+          {/* 회의실 목록 섹션 */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">회의실 목록</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {rooms.map((room) => (
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  onReserve={handleReserve}
+                  inUse={isRoomInUse(room.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 예약 내역 섹션 */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">
+              예약 내역 ({reservations.length})
+            </h2>
+            <ReservationList
+              reservations={reservations}
+              onCancel={handleCancelReservation}
+              initialViewMode={viewMode}
+            />
+          </div>
+        </div>
 
         {selectedRoom && (
           <ReservationForm
