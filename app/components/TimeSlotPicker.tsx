@@ -37,13 +37,13 @@ export default function TimeSlotPicker({
     return dateString === todayString;
   };
 
-  // 현재 시간 이전인지 확인
+  // 현재 시간 이전인지 확인 (시간 단위로 비교)
   const isPastTime = (time: string): boolean => {
     if (!isToday(selectedDate)) return false;
     const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const timeMinutes = timeToMinutes(time);
-    return timeMinutes < currentMinutes;
+    const currentHour = now.getHours();
+    const [timeHour] = time.split(':').map(Number);
+    return timeHour < currentHour;
   };
 
   const isDisabledEndTime = (time: string): boolean => {
