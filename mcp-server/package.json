@@ -1,0 +1,22 @@
+{
+  "name": "reserve-office-room-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for office room reservation system",
+  "type": "module",
+  "bin": {
+    "reserve-office-room-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@supabase/supabase-js": "^2.81.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
