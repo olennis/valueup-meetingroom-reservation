@@ -5,7 +5,8 @@
       "Bash(ls:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(claude mcp add:*)"
+      "Bash(claude mcp add:*)",
+      "mcp__reserve-office-room__list_rooms"
     ]
   }
 }
