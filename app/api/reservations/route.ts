@@ -84,8 +84,9 @@ export async function POST(request: NextRequest) {
     .eq('date', date);
 
   if (existing && existing.length > 0) {
+    const toHHMM = (t: string) => t.slice(0, 5); // "HH:MM:SS" → "HH:MM"
     const hasOverlap = existing.some((res: ReservationDB) => {
-      return start_time < res.end_time && end_time > res.start_time;
+      return start_time < toHHMM(res.end_time) && end_time > toHHMM(res.start_time);
     });
 
     if (hasOverlap) {
