@@ -101,29 +101,32 @@ const Home = () => {
     if (!room) return;
 
     try {
-      // Supabase에 예약 추가
-      const { data, error } = await supabase
-        .from('reservations')
-        .insert([
-          {
-            room_id: reservation.roomId,
-            room_name: room.name,
-            user_name: reservation.userName,
-            user_email: reservation.userEmail || null,
-            date: reservation.date,
-            start_time: reservation.startTime,
-            end_time: reservation.endTime,
-            purpose: reservation.purpose || null,
-          },
-        ])
-        .select()
-        .single();
+      // API 라우트를 통해 예약 생성 (중복 검사 포함)
+      const response = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          room_id: reservation.roomId,
+          user_name: reservation.userName,
+          user_email: reservation.userEmail || null,
+          date: reservation.date,
+          start_time: reservation.startTime,
+          end_time: reservation.endTime,
+          purpose: reservation.purpose || null,
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '예약에 실패했습니다.');
+      }
 
       // 로컬 상태 업데이트
-      if (data) {
-        const newReservation = dbToReservation(data as ReservationDB);
+      if (result.reservation) {
+        const newReservation = dbToReservation(result.reservation as ReservationDB);
         const updatedReservations = [...reservations, newReservation];
         setReservations(updatedReservations);
 
@@ -140,7 +143,8 @@ const Home = () => {
       setToast({ message: '예약이 완료되었습니다.', type: 'success', isVisible: true });
     } catch (error) {
       console.error('예약 실패:', error);
-      setToast({ message: '예약에 실패했습니다. 다시 시도해주세요.', type: 'error', isVisible: true });
+      const errorMessage = error instanceof Error ? error.message : '예약에 실패했습니다. 다시 시도해주세요.';
+      setToast({ message: errorMessage, type: 'error', isVisible: true });
     }
   };
 
