@@ -219,7 +219,7 @@ const Home = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-xl md:text-3xl font-bold text-gray-900">제주밸류업 회의실 예약 시스템</h1>
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900">모두의 회의실</h1>
         </div>
       </header>
 
